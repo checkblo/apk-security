@@ -10,6 +10,7 @@ import {
   makeVerifier,
   verifyKey,
 } from "./crypto.mjs";
+import { defaultCompliance, normalizeCompliance } from "./eu-compliance.mjs";
 
 const CONTROLS = Object.freeze([
   { id: "win-updates", area: "windows", weight: 10, label: "Automatyczne aktualizacje Windows 11 IoT", detail: "System oraz Microsoft Defender są aktualne." },
@@ -30,7 +31,7 @@ const CONTROLS = Object.freeze([
 
 function defaultVault() {
   return {
-    schema: 1,
+    schema: 2,
     completedControls: [],
     assets: [
       { id: randomUUID(), type: "computer", name: "Windows 11 IoT", notes: "Komputer główny", createdAt: new Date().toISOString() },
@@ -40,6 +41,7 @@ function defaultVault() {
     identities: [],
     scans: [],
     audit: [{ at: new Date().toISOString(), event: "vault_created" }],
+    compliance: defaultCompliance(),
   };
 }
 
@@ -75,7 +77,15 @@ function normalizeVault(value) {
 
   const scans = Array.isArray(value?.scans) ? value.scans.slice(-100) : [];
   const audit = Array.isArray(value?.audit) ? value.audit.slice(-200) : [];
-  return { schema: 1, completedControls, assets, identities, scans, audit };
+  return {
+    schema: 2,
+    completedControls,
+    assets,
+    identities,
+    scans,
+    audit,
+    compliance: normalizeCompliance(value?.compliance),
+  };
 }
 
 export class VaultStore {
