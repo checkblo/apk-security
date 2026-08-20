@@ -12,6 +12,7 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run test:secure && npm run build && node --test tests/rendered-html.test.mjs",
     "test:secure": "node --test secure-app/tests/*.test.mjs",
+    "verify:release": "node scripts/verify-release.mjs && npm run test:secure",
     "start:secure": "COOKIE_SECURE=0 APP_ORIGIN=http://127.0.0.1:3000 DATA_FILE=.local-data/cybertarcza.vault node secure-app/server.mjs",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
