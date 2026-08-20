@@ -49,10 +49,6 @@ function addHours(value, hours) {
   return new Date(new Date(value).getTime() + hours * 60 * 60 * 1000).toISOString();
 }
 
-function addDays(value, days) {
-  return addHours(value, days * 24);
-}
-
 function addCalendarMonths(value, months) {
   const source = new Date(value);
   const result = new Date(source);
