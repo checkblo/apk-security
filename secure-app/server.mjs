@@ -5,6 +5,21 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { clearKey } from "./lib/crypto.mjs";
 import { CONTROLS, VaultStore, cleanText } from "./lib/vault.mjs";
+import {
+  EU_PROFILES,
+  RECORD_STATUSES,
+  VULNERABILITY_STATUSES,
+  buildComplianceExport,
+  buildComplianceSummary,
+  buildCycloneDx,
+  buildDeadlineList,
+  createComponent,
+  createEvidence,
+  createIncident,
+  createRightRequest,
+  createVulnerability,
+  defaultCompliance,
+} from "./lib/eu-compliance.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(ROOT, "public");
@@ -15,7 +30,7 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE !== "0";
 const DISABLE_EXTERNAL_CHECKS = process.env.DISABLE_EXTERNAL_CHECKS === "1";
 const DATA_FILE = process.env.DATA_FILE ?? "/data/cybertarcza.vault";
 const HIBP_KEY_FILE = process.env.HIBP_API_KEY_FILE ?? "/run/secrets/hibp_api_key";
-const BODY_LIMIT = 32 * 1024;
+const BODY_LIMIT = 64 * 1024;
 const SESSION_IDLE_MS = 30 * 60 * 1000;
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 
@@ -54,6 +69,13 @@ function json(response, status, value, headers = {}) {
   for (const [name, content] of Object.entries(headers)) response.setHeader(name, content);
   response.statusCode = status;
   response.end(JSON.stringify(value));
+}
+
+function jsonDownload(response, filename, value) {
+  json(response, 200, value, {
+    "Content-Disposition": `attachment; filename=${filename}`,
+    "X-Content-Type-Options": "nosniff",
+  });
 }
 
 function parseCookies(request) {
@@ -321,7 +343,270 @@ async function handle(request, response) {
     const totalWeight = CONTROLS.reduce((sum, item) => sum + item.weight, 0);
     const completed = new Set(vault.completedControls);
     const score = Math.round(CONTROLS.filter((item) => completed.has(item.id)).reduce((sum, item) => sum + item.weight, 0) / totalWeight * 100);
-    json(response, 200, { controls: CONTROLS, vault, score });
+    json(response, 200, {
+      controls: CONTROLS,
+      vault,
+      score,
+      euProfiles: EU_PROFILES,
+      complianceSummary: buildComplianceSummary(vault.compliance),
+      complianceDeadlines: buildDeadlineList(vault.compliance),
+    });
+    return;
+  }
+
+  if (method === "GET" && path === "/api/compliance") {
+    const session = requireSession(request, response);
+    if (!session) return;
+    const vault = await store.read(session.key);
+    json(response, 200, {
+      profiles: EU_PROFILES,
+      compliance: vault.compliance,
+      summary: buildComplianceSummary(vault.compliance),
+      deadlines: buildDeadlineList(vault.compliance),
+    });
+    return;
+  }
+
+  if (method === "PUT" && path === "/api/compliance/profiles") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const knownProfiles = new Set(EU_PROFILES.map((profile) => profile.id));
+    const enabled = new Set(Array.isArray(body.enabled) ? body.enabled.filter((id) => knownProfiles.has(id)) : []);
+    const retention = Number.parseInt(body.settings?.retentionDays, 10);
+    const compliance = await store.mutate(session.key, "eu_profiles_updated", (vault) => {
+      vault.compliance.profiles = Object.fromEntries(EU_PROFILES.map((profile) => [profile.id, enabled.has(profile.id)]));
+      vault.compliance.settings = {
+        ...vault.compliance.settings,
+        organisation: cleanText(body.settings?.organisation, 120),
+        productName: cleanText(body.settings?.productName, 120) || vault.compliance.settings.productName,
+        supportUntil: cleanText(body.settings?.supportUntil, 40),
+        retentionDays: Number.isInteger(retention) ? Math.min(3650, Math.max(30, retention)) : vault.compliance.settings.retentionDays,
+      };
+      return vault.compliance;
+    });
+    json(response, 200, { compliance });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/rights") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const record = await store.mutate(session.key, "eu_rights_request_added", (vault) => {
+      if (vault.compliance.rightsRequests.length >= 200) throw new Error("compliance_record_limit");
+      const created = createRightRequest(body);
+      vault.compliance.rightsRequests.push(created);
+      return created;
+    });
+    json(response, 201, { record });
+    return;
+  }
+
+  if (method === "PATCH" && path.startsWith("/api/compliance/rights/")) {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const id = path.slice("/api/compliance/rights/".length);
+    const body = await readBody(request);
+    if (!RECORD_STATUSES.includes(body.status)) return json(response, 400, { error: "invalid_record_status" });
+    const record = await store.mutate(session.key, "eu_rights_request_updated", (vault) => {
+      const found = vault.compliance.rightsRequests.find((item) => item.id === id);
+      if (!found) throw new Error("compliance_record_not_found");
+      found.status = body.status;
+      found.notes = cleanText(body.notes ?? found.notes, 1000);
+      found.completedAt = ["completed", "rejected"].includes(body.status) ? new Date().toISOString() : null;
+      return found;
+    });
+    json(response, 200, { record });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/incidents") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const record = await store.mutate(session.key, "eu_incident_added", (vault) => {
+      if (vault.compliance.incidents.length >= 200) throw new Error("compliance_record_limit");
+      const created = createIncident(body, vault.compliance.profiles);
+      vault.compliance.incidents.push(created);
+      return created;
+    });
+    json(response, 201, { record });
+    return;
+  }
+
+  if (method === "PATCH" && path.startsWith("/api/compliance/incidents/")) {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const id = path.slice("/api/compliance/incidents/".length);
+    const body = await readBody(request);
+    if (!RECORD_STATUSES.includes(body.status)) return json(response, 400, { error: "invalid_record_status" });
+    const record = await store.mutate(session.key, "eu_incident_updated", (vault) => {
+      const found = vault.compliance.incidents.find((item) => item.id === id);
+      if (!found) throw new Error("compliance_record_not_found");
+      found.status = body.status;
+      found.description = cleanText(body.description ?? found.description, 2000);
+      found.resolvedAt = ["resolved", "completed"].includes(body.status) ? new Date().toISOString() : null;
+      if (typeof body.deadlineId === "string") {
+        const notification = found.deadlines.find((item) => item.id === body.deadlineId);
+        if (notification) notification.metAt = new Date().toISOString();
+      }
+      return found;
+    });
+    json(response, 200, { record });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/vulnerabilities") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const record = await store.mutate(session.key, "eu_vulnerability_added", (vault) => {
+      if (vault.compliance.vulnerabilities.length >= 200) throw new Error("compliance_record_limit");
+      const created = createVulnerability(body, vault.compliance.profiles);
+      vault.compliance.vulnerabilities.push(created);
+      return created;
+    });
+    json(response, 201, { record });
+    return;
+  }
+
+  if (method === "PATCH" && path.startsWith("/api/compliance/vulnerabilities/")) {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const id = path.slice("/api/compliance/vulnerabilities/".length);
+    const body = await readBody(request);
+    if (!VULNERABILITY_STATUSES.includes(body.status)) return json(response, 400, { error: "invalid_record_status" });
+    const record = await store.mutate(session.key, "eu_vulnerability_updated", (vault) => {
+      const found = vault.compliance.vulnerabilities.find((item) => item.id === id);
+      if (!found) throw new Error("compliance_record_not_found");
+      found.status = body.status;
+      found.notes = cleanText(body.notes ?? found.notes, 2000);
+      if (typeof body.deadlineId === "string") {
+        const notification = found.deadlines.find((item) => item.id === body.deadlineId);
+        if (notification) notification.metAt = new Date().toISOString();
+      }
+      return found;
+    });
+    json(response, 200, { record });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/components") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const component = await store.mutate(session.key, "eu_component_added", (vault) => {
+      if (vault.compliance.components.length >= 500) throw new Error("component_limit");
+      const created = createComponent(body);
+      vault.compliance.components.push(created);
+      return created;
+    });
+    json(response, 201, { component });
+    return;
+  }
+
+  if (method === "DELETE" && path.startsWith("/api/compliance/components/")) {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const id = path.slice("/api/compliance/components/".length);
+    await store.mutate(session.key, "eu_component_removed", (vault) => {
+      vault.compliance.components = vault.compliance.components.filter((item) => item.id !== id);
+    });
+    json(response, 200, { ok: true });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/evidence") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    const evidence = await store.mutate(session.key, "eu_evidence_added", (vault) => {
+      if (vault.compliance.evidence.length >= 500) throw new Error("evidence_limit");
+      const created = createEvidence(body);
+      created.digest = createHash("sha256").update(`${created.profile}\n${created.title}\n${created.reference}\n${created.collectedAt}`).digest("hex");
+      vault.compliance.evidence.push(created);
+      return created;
+    });
+    json(response, 201, { evidence });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/compliance/retention/run") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const removed = await store.mutate(session.key, "eu_retention_executed", (vault) => {
+      const cutoff = Date.now() - vault.compliance.settings.retentionDays * 24 * 60 * 60 * 1000;
+      const before = {
+        scans: vault.scans.length,
+        rights: vault.compliance.rightsRequests.length,
+        incidents: vault.compliance.incidents.length,
+        vulnerabilities: vault.compliance.vulnerabilities.length,
+      };
+      vault.scans = vault.scans.filter((item) => new Date(item.at).getTime() >= cutoff);
+      vault.compliance.rightsRequests = vault.compliance.rightsRequests.filter((item) => !item.completedAt || new Date(item.completedAt).getTime() >= cutoff);
+      vault.compliance.incidents = vault.compliance.incidents.filter((item) => !item.resolvedAt || new Date(item.resolvedAt).getTime() >= cutoff);
+      vault.compliance.vulnerabilities = vault.compliance.vulnerabilities.filter((item) => item.status !== "closed" || new Date(item.discoveredAt).getTime() >= cutoff);
+      return {
+        scans: before.scans - vault.scans.length,
+        rights: before.rights - vault.compliance.rightsRequests.length,
+        incidents: before.incidents - vault.compliance.incidents.length,
+        vulnerabilities: before.vulnerabilities - vault.compliance.vulnerabilities.length,
+      };
+    });
+    json(response, 200, { removed });
+    return;
+  }
+
+  if (method === "GET" && path === "/api/compliance/export") {
+    const session = requireSession(request, response);
+    if (!session) return;
+    const vault = await store.read(session.key);
+    jsonDownload(response, "cybertarcza-eu-evidence.json", buildComplianceExport(vault));
+    return;
+  }
+
+  if (method === "GET" && path === "/api/compliance/sbom") {
+    const session = requireSession(request, response);
+    if (!session) return;
+    const vault = await store.read(session.key);
+    jsonDownload(response, "cybertarcza-sbom.cdx.json", buildCycloneDx(vault.compliance));
+    return;
+  }
+
+  if (method === "GET" && path === "/api/privacy/export") {
+    const session = requireSession(request, response);
+    if (!session) return;
+    const vault = await store.read(session.key);
+    jsonDownload(response, "cybertarcza-personal-data.json", {
+      format: "cybertarcza-data-subject-export-v1",
+      generatedAt: new Date().toISOString(),
+      identities: vault.identities,
+      assets: vault.assets,
+      scans: vault.scans,
+      rightsRequests: vault.compliance.rightsRequests,
+    });
+    return;
+  }
+
+  if (method === "DELETE" && path === "/api/privacy/data") {
+    const session = requireSession(request, response, true);
+    if (!session) return;
+    const body = await readBody(request);
+    if (body.confirmation !== "USUŃ MOJE DANE") return json(response, 400, { error: "erasure_confirmation_required" });
+    await store.mutate(session.key, "personal_data_erased", (vault) => {
+      vault.identities = [];
+      vault.assets = [];
+      vault.scans = [];
+      const profiles = { ...vault.compliance.profiles };
+      const settings = { ...vault.compliance.settings };
+      const components = [...vault.compliance.components];
+      vault.compliance = defaultCompliance();
+      vault.compliance.profiles = profiles;
+      vault.compliance.settings = settings;
+      vault.compliance.components = components;
+    });
+    json(response, 200, { ok: true });
     return;
   }
 
@@ -435,9 +720,20 @@ const server = createServer((request, response) => {
       "json_required", "body_too_large", "invalid_email", "hibp_not_configured",
       "external_checks_disabled", "hibp_rate_limited", "hibp_unavailable",
       "pwned_passwords_unavailable", "asset_limit", "identity_limit", "identity_exists",
+      "invalid_rights_request", "invalid_incident", "invalid_vulnerability",
+      "invalid_component", "invalid_evidence", "invalid_record_status",
+      "compliance_record_limit", "compliance_record_not_found", "component_limit",
+      "evidence_limit", "erasure_confirmation_required",
     ]);
     const code = known.has(error?.message) ? error.message : "request_failed";
-    const status = ["json_required", "body_too_large", "invalid_email", "identity_exists"].includes(code) ? 400 :
+    const status = [
+      "json_required", "body_too_large", "invalid_email", "identity_exists",
+      "invalid_rights_request", "invalid_incident", "invalid_vulnerability",
+      "invalid_component", "invalid_evidence", "invalid_record_status",
+      "erasure_confirmation_required",
+    ].includes(code) ? 400 :
+      code === "compliance_record_not_found" ? 404 :
+      ["asset_limit", "identity_limit", "compliance_record_limit", "component_limit", "evidence_limit"].includes(code) ? 409 :
       ["hibp_not_configured", "external_checks_disabled"].includes(code) ? 503 : 500;
     if (code === "request_failed") console.error("request_failed", error?.message ?? "unknown");
     if (!response.headersSent) json(response, status, { error: code });
