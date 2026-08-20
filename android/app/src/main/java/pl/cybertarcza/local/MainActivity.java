@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
@@ -28,9 +29,11 @@ public final class MainActivity extends Activity {
     private TextView score;
     private ProgressBar progress;
     private boolean unlocked;
+    private boolean authenticating;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         getWindow().setStatusBarColor(Color.rgb(6, 17, 15));
         getWindow().setNavigationBarColor(Color.rgb(6, 17, 15));
         state = new SecureState(this);
@@ -40,12 +43,22 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        if (unlocked && completed != null) refreshScore();
+        if (!unlocked && !authenticating) requestUnlock();
+        else if (completed != null) refreshScore();
+    }
+
+    @Override protected void onStop() {
+        super.onStop();
+        if (!isChangingConfigurations()) {
+            unlocked = false;
+            completed = null;
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != UNLOCK_REQUEST) return;
+        authenticating = false;
         if (resultCode == RESULT_OK) {
             unlocked = true;
             completed = state.load();
@@ -56,15 +69,29 @@ public final class MainActivity extends Activity {
     }
 
     private void requestUnlock() {
+        if (authenticating) return;
         KeyguardManager manager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
         if (manager != null && manager.isDeviceSecure()) {
+            authenticating = true;
             Intent intent = manager.createConfirmDeviceCredentialIntent("Odblokuj CyberTarcze", "Potwierdz blokade ekranu, aby otworzyc zaszyfrowane dane.");
             startActivityForResult(intent, UNLOCK_REQUEST);
         } else {
-            unlocked = true;
-            completed = state.load();
-            render();
+            showSecureLockRequired();
         }
+    }
+
+    private void showSecureLockRequired() {
+        LinearLayout root = vertical(14);
+        root.setPadding(dp(24), dp(40), dp(24), dp(40));
+        root.setBackgroundColor(Color.rgb(6, 17, 15));
+        TextView title = text("Wymagana blokada ekranu", 26, Color.WHITE);
+        title.setTypeface(null, 1);
+        root.addView(title);
+        root.addView(text("Dla ochrony zaszyfrowanych danych ustaw PIN, haslo lub silna biometrie, a nastepnie wroc do CyberTarczy.", 15, Color.rgb(158, 184, 173)));
+        Button settings = button("Otworz ustawienia blokady");
+        settings.setOnClickListener(v -> safeStart(new Intent(Settings.ACTION_SECURITY_SETTINGS)));
+        root.addView(settings);
+        setContentView(root);
     }
 
     private void defineLayers() {
@@ -74,6 +101,11 @@ public final class MainActivity extends Activity {
         layers.put("windows", new String[]{"Windows 10/11 i Defender", "Aktualizacje, zapora, szyfrowanie, SmartScreen i kopia offline."});
         layers.put("play-protect", new String[]{"Play Protect i Advanced Protection", "Aktualizacje, blokada APK, ochrona USB/2G, gdy dostepna."});
         layers.put("router", new String[]{"Router Vectra", "WPA3/WPA2-AES, bez WPS, UPnP i zdalnego zarzadzania."});
+        layers.put("iot-segment", new String[]{"Oddzielona siec dla 11 IoT", "Osobny VLAN lub siec gosci, bez dostepu IoT do komputera i telefonu."});
+        layers.put("iot-lifecycle", new String[]{"Aktualizacje i hasla 11 IoT", "Bez hasel fabrycznych; zapisany producent, model, wersja i koniec wsparcia."});
+        layers.put("android-privacy", new String[]{"Minimalne uprawnienia aplikacji", "Usuniety dostep do SMS, kontaktow, plikow, lokalizacji i dostepnosci, gdy nie jest potrzebny."});
+        layers.put("eu-incidents", new String[]{"Proces incydentow GDPR / NIS2 / CRA", "Osoba odpowiedzialna, zegary 24 h i 72 h, dowody oraz raport koncowy."});
+        layers.put("eu-vulnerabilities", new String[]{"Podatnosci, SBOM i aktualizacje CRA", "Skoordynowane ujawnianie, lista komponentow i poprawki przez okres wsparcia."});
         layers.put("backup", new String[]{"Zaszyfrowana kopia offline", "Regula 3-2-1 i nosnik odlaczony po wykonaniu kopii."});
     }
 
@@ -107,6 +139,7 @@ public final class MainActivity extends Activity {
             box.setText(entry.getValue()[0]);
             box.setTextColor(Color.WHITE);
             box.setTextSize(16);
+            box.setFilterTouchesWhenObscured(true);
             box.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(54, 217, 155)));
             box.setChecked(completed.contains(entry.getKey()));
             box.setOnCheckedChangeListener((button, checked) -> {
@@ -136,6 +169,12 @@ public final class MainActivity extends Activity {
             button.setOnClickListener(v -> safeStart(new Intent(Settings.ACTION_SECURITY_SETTINGS)));
             panel.addView(button);
         }
+        if (id.equals("android-privacy")) {
+            Button button = button("Otworz panel prywatnosci");
+            button.setOnClickListener(v -> safeStart(new Intent(Settings.ACTION_PRIVACY_SETTINGS)));
+            panel.addView(button);
+        }
+        if (id.equals("iot-segment") || id.equals("iot-lifecycle")) panel.addView(linkButton("Otworz pomoc Vectra", "https://www.vectra.pl/pomoc"));
         if (id.equals("router")) panel.addView(linkButton("Pomoc Vectra", "https://www.vectra.pl/pomoc"));
         if (id.equals("windows")) panel.addView(linkButton("Wsparcie Windows", "https://support.microsoft.com/windows"));
     }
@@ -149,6 +188,7 @@ public final class MainActivity extends Activity {
     private Button button(String label) {
         Button button = new Button(this);
         button.setText(label);
+        button.setFilterTouchesWhenObscured(true);
         button.setTextColor(Color.rgb(6, 32, 25));
         button.setBackgroundColor(Color.rgb(156, 244, 200));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(46));
