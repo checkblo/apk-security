@@ -9,6 +9,21 @@ Lokalne, szyfrowane centrum warstwowej ochrony dla:
 
 CyberTarcza nie udaje antywirusa. Nie zastępuje Defendera, Play Protect ani zapory routera. Bezpiecznie przechowuje stan zabezpieczeń, wykonuje kontrole wycieków i dostarcza audyt Windows tylko do odczytu.
 
+## Działające usługi zgodności i odporności UE
+
+Panel **Usługi zgodności UE** nie jest samą dokumentacją. Po odblokowaniu szyfrowanego sejfu udostępnia:
+
+- obsługę wniosków RODO i Data Act z automatycznym terminem jednego miesiąca;
+- rejestr incydentów z zegarami 24 h, 72 h i raportem końcowym dla właściwych profili GDPR, NIS2 i CRA;
+- skoordynowaną obsługę podatności produktu, w tym osobny tryb aktywnego wykorzystywania luki CRA;
+- inwentarz zależności i eksport **CycloneDX 1.6 SBOM** dla aplikacji oraz 11 urządzeń IoT;
+- rejestr dowodów z odciskiem SHA-256 i zaszyfrowany pakiet dowodowy JSON;
+- profile GDPR, CRA, Data Act, ePrivacy, European Accessibility Act i ETSI EN 303 645;
+- warunkowe profile NIS2, RED/EN 18031, DORA, AI Act i Cybersecurity Act;
+- wykonywanie polityki retencji, eksport danych osoby i kontrolowane usunięcie danych osobowych.
+
+Wszystkie rekordy są przechowywane w tym samym sejfie AES-256-GCM. Zmiany wymagają aktywnej sesji i ochrony CSRF. Aplikacja nie przesyła zgłoszeń do organów — generuje terminy, stan spraw i materiał dowodowy do zatwierdzenia przez odpowiedzialną osobę.
+
 ## Najważniejsze zabezpieczenia aplikacji
 
 - sejf szyfrowany `AES-256-GCM` z uwierzytelnieniem danych;
@@ -52,6 +67,14 @@ Wymagania: 64-bitowy Windows, wirtualizacja, WSL 2 i uruchomiony Docker Desktop.
    Skrypt pokazuje SHA-256 certyfikatu i wymaga wpisania dokładnie `TAK`. Nie instaluje certyfikatu automatycznie.
 
 5. Otwórz `https://localhost:8443` i utwórz hasło główne o długości minimum 16 znaków. Zalecana jest fraza z 5–6 losowych słów.
+
+6. Sprawdź całą instalację (kontenery, HTTPS, stan `healthy` i nagłówki ochronne):
+
+   ```powershell
+   .\scripts\test-cybertarcza.ps1 -SkipImageBuild
+   ```
+
+   Bez parametru `-SkipImageBuild` skrypt najpierw ponownie zbuduje obraz aplikacji.
 
 Zatrzymanie:
 
@@ -110,10 +133,10 @@ Przycisk „Pobierz plik .vault” eksportuje już zaszyfrowany sejf. Stosuj reg
 ## Testy
 
 ```bash
-npm run test:secure
+npm run verify:release
 ```
 
-Testy obejmują integralność AES-GCM, odrzucenie złego hasła, brak jawnych danych w pliku sejfu, sesje oraz blokadę CSRF.
+Polecenie nie wymaga zewnętrznych bibliotek dla części bezpiecznej. Sprawdza strukturę wydania, polityki Docker i Android, powiązanie UI z API, brak typowych sekretów, integralność AES-GCM, odrzucenie złego hasła, brak jawnych danych w pliku sejfu, migrację sejfu, terminy GDPR/NIS2/CRA, eksport SBOM, sesje oraz blokadę CSRF.
 
 ## Aktualizacje
 
@@ -126,9 +149,9 @@ docker compose up -d --build
 
 Przed aktualizacją pobierz kopię `.vault`. Po aktualizacji sprawdź `docker compose ps` i uruchom testy projektu.
 
-## Bezpieczeństwo i zgodność UE
+## Bezpieczeństwo i zakres prawny UE
 
-Projekt zawiera profil przygotowania do Cyber Resilience Act, RODO i — warunkowo — NIS2, Data Act oraz wymagań sektorowych. Dokumentacja rozdziela obowiązki prawne od dobrowolnych standardów i nie składa nieuzasadnionej deklaracji certyfikacji ani zgodności CE.
+Projekt zawiera działające usługi przygotowania do Cyber Resilience Act, RODO, Data Act oraz — warunkowo — NIS2, RED, DORA, AI Act i wymagań sektorowych. Profile rozdzielają obowiązki prawne od dobrowolnych standardów i nie składają nieuzasadnionej deklaracji certyfikacji ani zgodności CE.
 
 - [Matryca zgodności bezpieczeństwa UE](docs/EU-SECURITY-COMPLIANCE.md)
 - [Lista dokumentacji technicznej CRA](docs/CRA-TECHNICAL-FILE-CHECKLIST.md)
