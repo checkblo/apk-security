@@ -1,7 +1,7 @@
 {
   "name": "CyberTarcza Local",
   "short_name": "CyberTarcza",
-  "description": "Szyfrowane centrum warstwowej ochrony kont, Windowsa, Androida i sieci domowej.",
+  "description": "Szyfrowane centrum ochrony i operacyjnej obsługi wymagań cyberbezpieczeństwa UE.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

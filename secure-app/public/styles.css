@@ -20,7 +20,7 @@
 * { box-sizing: border-box; }
 html { min-width: 320px; scroll-behavior: smooth; }
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
-button, input, select { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: var(--green); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -39,8 +39,9 @@ a:hover { text-decoration: underline; }
 .auth-lead { color: var(--muted); line-height: 1.65; margin: 18px 0 30px; }
 .auth-form { display: grid; gap: 17px; }
 label { display: grid; gap: 8px; color: #d6e9e0; font-size: 13px; font-weight: 700; }
-input, select { width: 100%; border: 1px solid var(--line-strong); border-radius: 13px; background: rgba(3, 16, 13, .72); color: var(--text); padding: 13px 14px; outline: none; }
-input:focus, select:focus { border-color: var(--green-strong); box-shadow: 0 0 0 3px rgba(54, 217, 155, .13); }
+input, select, textarea { width: 100%; border: 1px solid var(--line-strong); border-radius: 13px; background: rgba(3, 16, 13, .72); color: var(--text); padding: 13px 14px; outline: none; }
+textarea { resize: vertical; min-height: 86px; }
+input:focus, select:focus, textarea:focus { border-color: var(--green-strong); box-shadow: 0 0 0 3px rgba(54, 217, 155, .13); }
 .field-help { margin: -3px 0 4px; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .form-message { min-height: 20px; margin: 18px 0 0; color: var(--red); font-size: 13px; }
 .notice { padding: 14px 16px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
@@ -55,6 +56,8 @@ input:focus, select:focus { border-color: var(--green-strong); box-shadow: 0 0 0
 .button-secondary { background: rgba(156, 244, 200, .08); color: var(--green); border-color: rgba(156, 244, 200, .23); }
 .button-secondary:hover { background: rgba(156, 244, 200, .14); }
 .button-ghost { background: transparent; border-color: var(--line); color: #d6e9e0; }
+.button-danger { background: rgba(255, 140, 135, .11); border-color: rgba(255, 140, 135, .3); color: #ffd7d5; }
+.button-danger:hover { background: rgba(255, 140, 135, .18); }
 .text-button { border: 0; background: transparent; color: var(--green); font-weight: 800; padding: 0; cursor: pointer; }
 
 .app-shell { min-height: 100vh; }
@@ -164,6 +167,31 @@ input:focus, select:focus { border-color: var(--green-strong); box-shadow: 0 0 0
 .system-card p { margin: 0 0 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .system-card a:not(.button) { font-size: 12px; font-weight: 800; }
 
+.compliance-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.compliance-summary .mini-panel { margin: 0; }
+.compliance-top-grid, .compliance-service-grid { margin-top: 18px; }
+.compliance-service-grid { align-items: start; }
+.form-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.profile-list { display: grid; gap: 8px; max-height: 410px; overflow: auto; padding-right: 4px; }
+.profile-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 11px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(2, 15, 12, .35); cursor: pointer; }
+.profile-row input, .check-line input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--green-strong); }
+.profile-row strong { display: block; font-size: 12px; }
+.profile-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 500; line-height: 1.45; }
+.check-line { display: flex; grid-template-columns: none; align-items: flex-start; gap: 10px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(2, 15, 12, .35); }
+.deadline-list, .service-list { display: grid; gap: 8px; margin-top: 18px; }
+.service-list { max-height: 380px; overflow: auto; }
+.service-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(2, 15, 12, .35); }
+.service-row > div { min-width: 0; }
+.service-row strong { display: block; overflow-wrap: anywhere; font-size: 12px; }
+.service-row small { display: block; margin-top: 5px; color: var(--muted); overflow-wrap: anywhere; font-size: 10px; line-height: 1.45; }
+.service-row .item-actions { flex: 0 0 auto; align-items: center; }
+.status-badge { display: inline-flex; padding: 5px 7px; border-radius: 999px; background: rgba(156, 244, 200, .09); color: var(--green); font-size: 9px; font-weight: 900; text-transform: uppercase; }
+.status-badge.overdue { background: rgba(255, 140, 135, .1); color: var(--red); }
+.danger-text { color: var(--red) !important; }
+.export-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+.danger-zone { border-color: rgba(255, 140, 135, .18); }
+.erasure-form { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255, 140, 135, .15); }
+
 .backup-card { display: grid; grid-template-columns: 1fr 1.5fr; align-items: center; padding: 34px; }
 .backup-art { height: 220px; display: grid; place-items: center; position: relative; }
 .backup-art span { position: absolute; width: 150px; height: 94px; border: 1px solid rgba(156, 244, 200, .27); border-radius: 19px; background: rgba(11, 43, 35, .75); transform: rotate(-9deg) translate(-18px, 10px); }
@@ -187,6 +215,7 @@ input:focus, select:focus { border-color: var(--green-strong); box-shadow: 0 0 0
   .content { padding-top: 36px; }
   .area-grid { grid-template-columns: 1fr 1fr; }
   .asset-grid { grid-template-columns: 1fr 1fr; }
+  .compliance-summary { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 720px) {
@@ -204,6 +233,9 @@ input:focus, select:focus { border-color: var(--green-strong); box-shadow: 0 0 0
   .score-ring strong { font-size: 34px; }
   .area-grid, .asset-grid { grid-template-columns: 1fr; }
   .inline-form { grid-template-columns: 1fr; }
+  .form-pair { grid-template-columns: 1fr; }
+  .service-row { display: grid; }
+  .service-row .item-actions { justify-content: flex-start; flex-wrap: wrap; }
   .backup-art { height: 170px; }
   .rule-grid { gap: 8px; }
   .mini-panel { display: grid; gap: 0; text-align: center; padding: 14px 8px; }

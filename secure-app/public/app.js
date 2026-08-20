@@ -39,6 +39,16 @@ function errorText(code) {
     pwned_passwords_unavailable: "Nie udało się połączyć z Pwned Passwords.",
     external_checks_disabled: "Połączenia zewnętrzne są wyłączone w konfiguracji.",
     identity_exists: "Ten adres jest już zapisany.",
+    invalid_rights_request: "Podaj rodzaj wniosku i bezpieczny identyfikator osoby.",
+    invalid_incident: "Podaj prawidłową kategorię i tytuł incydentu.",
+    invalid_vulnerability: "Podaj produkt i tytuł podatności.",
+    invalid_component: "Nazwa i wersja komponentu są wymagane.",
+    invalid_evidence: "Wybierz profil i podaj tytuł dowodu.",
+    invalid_record_status: "Nieprawidłowy stan rekordu.",
+    compliance_record_limit: "Osiągnięto limit rekordów zgodności. Wyeksportuj dane i wykonaj retencję.",
+    component_limit: "Osiągnięto limit 500 komponentów SBOM.",
+    evidence_limit: "Osiągnięto limit 500 dowodów.",
+    erasure_confirmation_required: "Wpisz dokładnie: USUŃ MOJE DANE.",
     invalid_request_protection: "Sesja ochronna wygasła. Zablokuj i odblokuj aplikację ponownie.",
     authentication_required: "Sesja wygasła. Odblokuj aplikację ponownie.",
   };
@@ -90,6 +100,7 @@ function renderAll() {
   renderAssets();
   renderIdentities();
   renderScans();
+  renderCompliance();
 }
 
 function renderScore() {
@@ -313,6 +324,226 @@ function renderScans() {
   }
 }
 
+const rightLabels = {
+  access: "Dostęp", rectification: "Sprostowanie", erasure: "Usunięcie",
+  restriction: "Ograniczenie", portability: "Przenoszenie", objection: "Sprzeciw",
+  automated_decision: "Decyzja automatyczna", connected_data_access: "Dane produktu — dostęp",
+  connected_data_share: "Dane produktu — udostępnienie",
+};
+
+const categoryLabels = {
+  cyber_incident: "Incydent cyber", personal_data_breach: "Naruszenie danych osobowych",
+  actively_exploited_vulnerability: "Aktywnie wykorzystywana podatność",
+  severe_product_incident: "Poważny incydent produktu", service_disruption: "Zakłócenie usługi",
+  third_party_incident: "Incydent dostawcy",
+};
+
+const stageLabels = {
+  notification_to_supervisory_authority: "Zgłoszenie do organu nadzorczego",
+  early_warning: "Wczesne ostrzeżenie", incident_notification: "Zgłoszenie incydentu",
+  full_notification: "Pełne zgłoszenie", final_report: "Raport końcowy",
+};
+
+function localDate(value) {
+  return value ? new Date(value).toLocaleString("pl-PL", { dateStyle: "medium", timeStyle: "short" }) : "termin zależny od działania";
+}
+
+function dateOnly(value) {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+function emptyList(root, text) {
+  const item = document.createElement("p");
+  item.className = "field-help";
+  item.textContent = text;
+  root.append(item);
+}
+
+function serviceRow({ title, meta, badge, danger = false, actionLabel, onAction }) {
+  const row = document.createElement("div");
+  row.className = "service-row";
+  const content = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const details = document.createElement("small");
+  details.textContent = meta;
+  content.append(heading, details);
+  const actions = document.createElement("span");
+  actions.className = "item-actions";
+  if (badge) {
+    const status = document.createElement("span");
+    status.className = `status-badge${danger ? " overdue" : ""}`;
+    status.textContent = badge;
+    actions.append(status);
+  }
+  if (actionLabel && onAction) {
+    const button = document.createElement("button");
+    button.className = "mini-button";
+    button.type = "button";
+    button.textContent = actionLabel;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try { await onAction(); } catch (error) { message(errorText(error.code), true); }
+      finally { button.disabled = false; }
+    });
+    actions.append(button);
+  }
+  row.append(content, actions);
+  return row;
+}
+
+function renderCompliance() {
+  const compliance = state.dashboard.vault.compliance;
+  const summary = state.dashboard.complianceSummary;
+  $("#eu-summary-profiles").textContent = summary.enabledProfiles;
+  $("#eu-summary-incidents").textContent = summary.openIncidents;
+  $("#eu-summary-rights").textContent = summary.openRightsRequests;
+  $("#eu-summary-overdue").textContent = summary.overdueDeadlines;
+  $("#eu-summary-overdue").classList.toggle("danger-text", summary.overdueDeadlines > 0);
+
+  const profilesRoot = $("#eu-profile-list");
+  profilesRoot.replaceChildren();
+  for (const profile of state.dashboard.euProfiles) {
+    const label = document.createElement("label");
+    label.className = "profile-row";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = profile.id;
+    input.checked = Boolean(compliance.profiles[profile.id]);
+    const text = document.createElement("span");
+    const strong = document.createElement("strong");
+    strong.textContent = profile.label;
+    const small = document.createElement("small");
+    small.textContent = `${profile.legal} · ${profile.scope}`;
+    text.append(strong, small);
+    label.append(input, text);
+    profilesRoot.append(label);
+  }
+  $("#eu-organisation").value = compliance.settings.organisation;
+  $("#eu-product-name").value = compliance.settings.productName;
+  $("#eu-support-until").value = dateOnly(compliance.settings.supportUntil);
+  $("#eu-retention-days").value = compliance.settings.retentionDays;
+
+  const profileSelect = $("#eu-evidence-profile");
+  const selectedProfile = profileSelect.value;
+  profileSelect.replaceChildren();
+  for (const profile of state.dashboard.euProfiles) {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.label;
+    option.selected = profile.id === selectedProfile;
+    profileSelect.append(option);
+  }
+
+  const deadlineRoot = $("#eu-deadline-list");
+  deadlineRoot.replaceChildren();
+  if (!state.dashboard.complianceDeadlines.length) emptyList(deadlineRoot, "Brak aktywnych terminów zgłoszeniowych.");
+  for (const deadline of state.dashboard.complianceDeadlines) {
+    const incident = compliance.incidents.find((item) => item.id === deadline.recordId);
+    const kind = incident ? "incidents" : "vulnerabilities";
+    const record = incident ?? compliance.vulnerabilities.find((item) => item.id === deadline.recordId);
+    deadlineRoot.append(serviceRow({
+      title: `${deadline.framework}: ${stageLabels[deadline.stage] ?? deadline.stage}`,
+      meta: `${deadline.recordTitle} · ${localDate(deadline.dueAt)} · ${deadline.rule}`,
+      badge: deadline.overdue ? "po terminie" : "otwarty",
+      danger: deadline.overdue,
+      actionLabel: "Oznacz wykonanie",
+      onAction: () => updateComplianceRecord(kind, deadline.recordId, record.status, deadline.id),
+    }));
+  }
+
+  renderRights(compliance.rightsRequests);
+  renderIncidents(compliance.incidents);
+  renderVulnerabilities(compliance.vulnerabilities);
+  renderComponents(compliance.components);
+  renderEvidence(compliance.evidence);
+}
+
+function renderRights(records) {
+  const root = $("#eu-rights-list");
+  root.replaceChildren();
+  if (!records.length) return emptyList(root, "Brak wniosków.");
+  for (const record of [...records].reverse().slice(0, 20)) {
+    const closed = ["completed", "rejected"].includes(record.status);
+    root.append(serviceRow({
+      title: `${rightLabels[record.type] ?? record.type}: ${record.subjectRef}`,
+      meta: `Otrzymano ${localDate(record.receivedAt)} · termin ${localDate(record.dueAt)}`,
+      badge: record.status,
+      actionLabel: closed ? null : "Zakończ",
+      onAction: () => updateComplianceRecord("rights", record.id, "completed"),
+    }));
+  }
+}
+
+function renderIncidents(records) {
+  const root = $("#eu-incidents-list");
+  root.replaceChildren();
+  if (!records.length) return emptyList(root, "Brak incydentów.");
+  for (const record of [...records].reverse().slice(0, 20)) {
+    const closed = ["resolved", "completed"].includes(record.status);
+    root.append(serviceRow({
+      title: record.title,
+      meta: `${categoryLabels[record.category] ?? record.category} · ${record.severity} · ${record.deadlines.length} terminów`,
+      badge: record.status,
+      actionLabel: closed ? null : "Rozwiąż",
+      onAction: () => updateComplianceRecord("incidents", record.id, "resolved"),
+    }));
+  }
+}
+
+function renderVulnerabilities(records) {
+  const root = $("#eu-vulnerabilities-list");
+  root.replaceChildren();
+  if (!records.length) return emptyList(root, "Brak podatności.");
+  for (const record of [...records].reverse().slice(0, 20)) {
+    root.append(serviceRow({
+      title: `${record.product}: ${record.title}`,
+      meta: `${record.identifier || "bez CVE"} · ${record.severity}${record.exploited ? " · aktywnie wykorzystywana" : ""}`,
+      badge: record.status,
+      actionLabel: record.status === "closed" ? null : "Zamknij",
+      onAction: () => updateComplianceRecord("vulnerabilities", record.id, "closed"),
+    }));
+  }
+}
+
+function renderComponents(records) {
+  const root = $("#eu-components-list");
+  root.replaceChildren();
+  if (!records.length) return emptyList(root, "Dodaj zależności produktu, aby zbudować SBOM.");
+  for (const record of [...records].reverse().slice(0, 30)) {
+    root.append(serviceRow({
+      title: `${record.name} ${record.version}`,
+      meta: [record.supplier, record.license, record.purl].filter(Boolean).join(" · ") || "brak metadanych",
+      actionLabel: "Usuń",
+      onAction: async () => {
+        await api(`/api/compliance/components/${encodeURIComponent(record.id)}`, { method: "DELETE" });
+        await refreshDashboard();
+      },
+    }));
+  }
+}
+
+function renderEvidence(records) {
+  const root = $("#eu-evidence-list");
+  root.replaceChildren();
+  if (!records.length) return emptyList(root, "Brak zapisanych dowodów.");
+  for (const record of [...records].reverse().slice(0, 30)) {
+    root.append(serviceRow({
+      title: record.title,
+      meta: `${record.profile.toUpperCase()} · SHA-256 ${record.digest.slice(0, 12)}… · ${localDate(record.collectedAt)}`,
+    }));
+  }
+}
+
+async function updateComplianceRecord(kind, id, status, deadlineId) {
+  await api(`/api/compliance/${kind}/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, ...(deadlineId ? { deadlineId } : {}) }),
+  });
+  await refreshDashboard();
+  message("Rejestr zgodności został zaktualizowany.");
+}
+
 function navigate(section) {
   $$(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.section === section));
   $$(".view").forEach((view) => view.classList.toggle("active", view.id === `section-${section}`));
@@ -409,6 +640,136 @@ $("#password-check-form").addEventListener("submit", async (event) => {
     input.value = "";
     setBusy(form, false);
   }
+});
+
+$("#eu-settings-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const enabled = $$('input[type="checkbox"]', $("#eu-profile-list")).filter((input) => input.checked).map((input) => input.value);
+    await api("/api/compliance/profiles", {
+      method: "PUT",
+      body: JSON.stringify({ enabled, settings: {
+        organisation: $("#eu-organisation").value,
+        productName: $("#eu-product-name").value,
+        supportUntil: $("#eu-support-until").value,
+        retentionDays: Number.parseInt($("#eu-retention-days").value, 10),
+      } }),
+    });
+    await refreshDashboard();
+    message("Zakres usług UE i retencja zostały zapisane.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-rights-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    await api("/api/compliance/rights", { method: "POST", body: JSON.stringify({
+      type: $("#eu-right-type").value, subjectRef: $("#eu-right-subject").value,
+      receivedAt: $("#eu-right-received").value, notes: $("#eu-right-notes").value,
+    }) });
+    form.reset();
+    await refreshDashboard();
+    message("Wniosek został zapisany z miesięcznym terminem obsługi.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-incident-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    await api("/api/compliance/incidents", { method: "POST", body: JSON.stringify({
+      category: $("#eu-incident-category").value, title: $("#eu-incident-title").value,
+      severity: $("#eu-incident-severity").value, discoveredAt: $("#eu-incident-discovered").value,
+      description: $("#eu-incident-description").value,
+    }) });
+    form.reset();
+    await refreshDashboard();
+    message("Incydent został zarejestrowany, a właściwe terminy zostały wyliczone.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-vulnerability-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    await api("/api/compliance/vulnerabilities", { method: "POST", body: JSON.stringify({
+      product: $("#eu-vulnerability-product").value, title: $("#eu-vulnerability-title").value,
+      identifier: $("#eu-vulnerability-id").value, severity: $("#eu-vulnerability-severity").value,
+      exploited: $("#eu-vulnerability-exploited").checked, notes: $("#eu-vulnerability-notes").value,
+    }) });
+    form.reset();
+    await refreshDashboard();
+    message("Podatność została dodana do procesu skoordynowanego ujawniania.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-component-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    await api("/api/compliance/components", { method: "POST", body: JSON.stringify({
+      name: $("#eu-component-name").value, version: $("#eu-component-version").value,
+      supplier: $("#eu-component-supplier").value, purl: $("#eu-component-purl").value,
+      license: $("#eu-component-license").value, supportUntil: $("#eu-component-support").value,
+    }) });
+    form.reset();
+    await refreshDashboard();
+    message("Komponent został dodany do SBOM.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-evidence-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    await api("/api/compliance/evidence", { method: "POST", body: JSON.stringify({
+      profile: $("#eu-evidence-profile").value, title: $("#eu-evidence-title").value,
+      reference: $("#eu-evidence-reference").value,
+    }) });
+    form.reset();
+    await refreshDashboard();
+    message("Dowód i jego skrót SHA-256 zostały zapisane w szyfrowanym sejfie.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
+});
+
+$("#eu-run-retention").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const result = await api("/api/compliance/retention/run", { method: "POST", body: "{}" });
+    await refreshDashboard();
+    const count = Object.values(result.removed).reduce((sum, value) => sum + value, 0);
+    message(`Retencja wykonana. Usunięto ${count} zakończonych rekordów poza okresem przechowywania.`);
+  } catch (error) { message(errorText(error.code), true); }
+  finally { button.disabled = false; }
+});
+
+$("#eu-erasure-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!window.confirm("Ta operacja trwale usunie dane osobowe i rejestry spraw z sejfu. Kontynuować?")) return;
+  setBusy(form, true);
+  try {
+    await api("/api/privacy/data", { method: "DELETE", body: JSON.stringify({ confirmation: $("#eu-erasure-confirmation").value }) });
+    form.reset();
+    await refreshDashboard();
+    message("Dane osobowe zostały usunięte. Profile i SBOM pozostały zachowane.");
+  } catch (error) { message(errorText(error.code), true); }
+  finally { setBusy(form, false); }
 });
 
 $$('.nav-item').forEach((item) => item.addEventListener("click", () => navigate(item.dataset.section)));

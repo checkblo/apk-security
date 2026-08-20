@@ -1,4 +1,4 @@
-const CACHE = "cybertarcza-shell-v1";
+const CACHE = "cybertarcza-shell-v2-eu-services";
 const SHELL = ["/", "/styles.css", "/app.js", "/icon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

@@ -68,7 +68,8 @@
           <button class="nav-item" data-section="exposure" type="button"><span>03</span> Wycieki danych</button>
           <button class="nav-item" data-section="devices" type="button"><span>04</span> Urządzenia</button>
           <button class="nav-item" data-section="system" type="button"><span>05</span> Windows i Android</button>
-          <button class="nav-item" data-section="backup" type="button"><span>06</span> Kopia sejfu</button>
+          <button class="nav-item" data-section="compliance" type="button"><span>06</span> Usługi zgodności UE</button>
+          <button class="nav-item" data-section="backup" type="button"><span>07</span> Kopia sejfu</button>
           <div class="sidebar-foot">
             <p>Szyfrowanie sejfu</p>
             <strong>AES-256-GCM</strong>
@@ -157,6 +158,118 @@
               <article class="system-card panel warning"><span class="system-mark windows">10</span><div><h3>Windows 10</h3><p>Obsługiwany przez audyt, ale system bez ESU nie otrzymuje zwykłych poprawek bezpieczeństwa. Aplikacja nie naprawi braku aktualizacji systemowych.</p><a href="https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/windows-10-support-has-ended-on-october-14-2025" target="_blank" rel="noopener noreferrer">Informacja Microsoftu →</a></div></article>
               <article class="system-card panel"><span class="system-mark android">A</span><div><h3>Android 10 i nowszy</h3><p>Play Protect, aktualizacje, Find Hub, blokada ekranu, instalacje zewnętrzne i instrukcje Advanced Protection, gdy system ją obsługuje.</p><button id="pwa-install-secondary" class="button button-secondary" type="button">Zainstaluj PWA</button></div></article>
               <article class="system-card panel"><span class="system-mark router">R</span><div><h3>Router Vectra</h3><p>Lista ustawień WPA3/WPA2-AES, WPS, UPnP, dostępu zdalnego, DNS i sieci gościnnej. Dokładne nazwy opcji zależą od modelu routera.</p><button class="text-button" data-jump="layers" type="button">Otwórz kontrole routera →</button></div></article>
+            </div>
+          </section>
+
+          <section id="section-compliance" class="view" aria-labelledby="compliance-title">
+            <div class="page-heading">
+              <div><p class="eyebrow">Usługi operacyjne</p><h2 id="compliance-title">Zgodność i odporność UE</h2></div>
+              <p class="page-copy">Aplikacja prowadzi szyfrowane rejestry, wylicza terminy i tworzy eksporty dowodowe. Nie wysyła zgłoszeń do organów i nie stanowi certyfikatu, porady prawnej ani deklaracji CE.</p>
+            </div>
+
+            <div class="compliance-summary">
+              <article class="mini-panel"><strong id="eu-summary-profiles">0</strong><span>aktywne profile</span></article>
+              <article class="mini-panel"><strong id="eu-summary-incidents">0</strong><span>otwarte incydenty</span></article>
+              <article class="mini-panel"><strong id="eu-summary-rights">0</strong><span>wnioski osób</span></article>
+              <article class="mini-panel"><strong id="eu-summary-overdue">0</strong><span>terminy po czasie</span></article>
+            </div>
+
+            <div class="split-grid compliance-top-grid">
+              <article class="panel form-panel">
+                <p class="panel-kicker">Zakres prawny</p>
+                <h3>Profile usług</h3>
+                <p class="field-help">RODO, CRA, Data Act, ePrivacy i dostępność są włączone jako baza. Profile sektorowe zaznacz tylko po potwierdzeniu, że dotyczą organizacji lub produktu.</p>
+                <form id="eu-settings-form" class="stack-form">
+                  <div id="eu-profile-list" class="profile-list"></div>
+                  <label>Organizacja<input id="eu-organisation" type="text" maxlength="120" autocomplete="organization"></label>
+                  <label>Produkt lub usługa<input id="eu-product-name" type="text" maxlength="120" required></label>
+                  <div class="form-pair">
+                    <label>Wsparcie do<input id="eu-support-until" type="date"></label>
+                    <label>Retencja (dni)<input id="eu-retention-days" type="number" min="30" max="3650" required></label>
+                  </div>
+                  <button class="button button-primary" type="submit">Zapisz zakres i retencję</button>
+                </form>
+              </article>
+
+              <article class="panel form-panel">
+                <p class="panel-kicker">Zegar regulacyjny</p>
+                <h3>Najbliższe terminy</h3>
+                <p class="field-help">Terminy są podpowiedzią operacyjną. Zawsze sprawdź przesłanki zgłoszenia i właściwy organ.</p>
+                <div id="eu-deadline-list" class="deadline-list"></div>
+              </article>
+            </div>
+
+            <div class="split-grid compliance-service-grid">
+              <article class="panel form-panel">
+                <p class="panel-kicker">RODO i Data Act</p><h3>Wnioski i prawa osób</h3>
+                <form id="eu-rights-form" class="stack-form">
+                  <label>Rodzaj wniosku<select id="eu-right-type"><option value="access">Dostęp do danych</option><option value="rectification">Sprostowanie</option><option value="erasure">Usunięcie</option><option value="restriction">Ograniczenie</option><option value="portability">Przenoszenie</option><option value="objection">Sprzeciw</option><option value="automated_decision">Decyzja zautomatyzowana</option><option value="connected_data_access">Dostęp do danych produktu</option><option value="connected_data_share">Udostępnienie danych produktu</option></select></label>
+                  <label>Bezpieczny identyfikator osoby<input id="eu-right-subject" type="text" maxlength="160" placeholder="np. numer sprawy, nie pełny PESEL" required></label>
+                  <label>Data otrzymania<input id="eu-right-received" type="datetime-local"></label>
+                  <label>Notatka<textarea id="eu-right-notes" maxlength="1000" rows="3"></textarea></label>
+                  <button class="button button-primary" type="submit">Zarejestruj wniosek</button>
+                </form>
+                <div id="eu-rights-list" class="service-list"></div>
+              </article>
+
+              <article class="panel form-panel">
+                <p class="panel-kicker">RODO · NIS2 · CRA</p><h3>Rejestr incydentów</h3>
+                <form id="eu-incident-form" class="stack-form">
+                  <label>Kategoria<select id="eu-incident-category"><option value="cyber_incident">Incydent cyberbezpieczeństwa</option><option value="personal_data_breach">Naruszenie danych osobowych</option><option value="severe_product_incident">Poważny incydent produktu</option><option value="service_disruption">Zakłócenie usługi</option><option value="third_party_incident">Incydent dostawcy</option></select></label>
+                  <label>Tytuł<input id="eu-incident-title" type="text" maxlength="180" required></label>
+                  <div class="form-pair"><label>Waga<select id="eu-incident-severity"><option value="medium">Średnia</option><option value="low">Niska</option><option value="high">Wysoka</option><option value="critical">Krytyczna</option></select></label><label>Wykryto<input id="eu-incident-discovered" type="datetime-local"></label></div>
+                  <label>Opis<textarea id="eu-incident-description" maxlength="2000" rows="3"></textarea></label>
+                  <button class="button button-primary" type="submit">Uruchom obsługę incydentu</button>
+                </form>
+                <div id="eu-incidents-list" class="service-list"></div>
+              </article>
+
+              <article class="panel form-panel">
+                <p class="panel-kicker">CRA i skoordynowane ujawnianie</p><h3>Podatności produktu</h3>
+                <form id="eu-vulnerability-form" class="stack-form">
+                  <label>Produkt<input id="eu-vulnerability-product" type="text" maxlength="120" required></label>
+                  <label>Tytuł podatności<input id="eu-vulnerability-title" type="text" maxlength="180" required></label>
+                  <div class="form-pair"><label>Identyfikator<input id="eu-vulnerability-id" type="text" maxlength="80" placeholder="np. CVE-…"></label><label>Waga<select id="eu-vulnerability-severity"><option value="medium">Średnia</option><option value="low">Niska</option><option value="high">Wysoka</option><option value="critical">Krytyczna</option></select></label></div>
+                  <label class="check-line"><input id="eu-vulnerability-exploited" type="checkbox"> Aktywnie wykorzystywana — uruchom terminy CRA</label>
+                  <label>Notatka<textarea id="eu-vulnerability-notes" maxlength="2000" rows="3"></textarea></label>
+                  <button class="button button-primary" type="submit">Dodaj podatność</button>
+                </form>
+                <div id="eu-vulnerabilities-list" class="service-list"></div>
+              </article>
+
+              <article class="panel form-panel">
+                <p class="panel-kicker">CRA · IoT · łańcuch dostaw</p><h3>Komponenty i SBOM</h3>
+                <form id="eu-component-form" class="stack-form">
+                  <div class="form-pair"><label>Nazwa<input id="eu-component-name" type="text" maxlength="120" required></label><label>Wersja<input id="eu-component-version" type="text" maxlength="80" required></label></div>
+                  <label>Dostawca<input id="eu-component-supplier" type="text" maxlength="120"></label>
+                  <label>Package URL (purl)<input id="eu-component-purl" type="text" maxlength="240" placeholder="pkg:npm/nazwa@wersja"></label>
+                  <div class="form-pair"><label>Licencja<input id="eu-component-license" type="text" maxlength="120" placeholder="np. MIT"></label><label>Wsparcie do<input id="eu-component-support" type="date"></label></div>
+                  <button class="button button-primary" type="submit">Dodaj komponent</button>
+                </form>
+                <div class="export-actions"><a class="button button-secondary" href="/api/compliance/sbom" download>Pobierz CycloneDX SBOM</a><a class="button button-secondary" href="/api/compliance/export" download>Pobierz pakiet dowodowy</a></div>
+                <div id="eu-components-list" class="service-list"></div>
+              </article>
+
+              <article class="panel form-panel">
+                <p class="panel-kicker">Ślad audytowy</p><h3>Dowody wykonania</h3>
+                <form id="eu-evidence-form" class="stack-form">
+                  <label>Profil<select id="eu-evidence-profile"></select></label>
+                  <label>Tytuł dowodu<input id="eu-evidence-title" type="text" maxlength="180" required></label>
+                  <label>Referencja<input id="eu-evidence-reference" type="text" maxlength="240" placeholder="np. numer raportu lub ścieżka lokalna"></label>
+                  <button class="button button-primary" type="submit">Zapisz skrót dowodu</button>
+                </form>
+                <div id="eu-evidence-list" class="service-list"></div>
+              </article>
+
+              <article class="panel form-panel danger-zone">
+                <p class="panel-kicker">Minimalizacja danych</p><h3>Retencja i prawa użytkownika</h3>
+                <p class="field-help">Eksportuj dane osoby w czytelnym JSON albo usuń dane osobowe z sejfu. Konfiguracja profili i SBOM pozostają zachowane.</p>
+                <div class="export-actions"><a class="button button-secondary" href="/api/privacy/export" download>Eksport danych osoby</a><button id="eu-run-retention" class="button button-secondary" type="button">Wykonaj retencję</button></div>
+                <form id="eu-erasure-form" class="stack-form erasure-form">
+                  <label>Aby usunąć dane osobowe, wpisz dokładnie: USUŃ MOJE DANE<input id="eu-erasure-confirmation" type="text" autocomplete="off"></label>
+                  <button class="button button-danger" type="submit">Usuń dane osobowe z sejfu</button>
+                </form>
+              </article>
             </div>
           </section>
 
