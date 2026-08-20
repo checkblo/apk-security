@@ -1,0 +1,15 @@
+.git
+.openai
+.sites-runtime
+.wrangler
+node_modules
+dist
+data
+caddy-data
+caddy-config
+.secrets
+android/.gradle
+android/build
+android/app/build
+*.vault
+*.zip

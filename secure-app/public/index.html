@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#071713">
+    <meta name="description" content="Lokalne, szyfrowane centrum ochrony kont, Windowsa, Androida i sieci domowej.">
+    <title>CyberTarcza Local</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <main id="auth-shell" class="auth-shell">
+      <section class="auth-card" aria-labelledby="auth-title">
+        <div class="brand-lock" aria-hidden="true">CT</div>
+        <p class="eyebrow">Lokalnie. Szyfrowane. Pod Twoją kontrolą.</p>
+        <h1 id="auth-title">CyberTarcza Local</h1>
+        <p class="auth-lead">Warstwowa ochrona Windows 10/11, Androida 10+, routera i najważniejszych kont.</p>
+
+        <form id="setup-form" class="auth-form hidden">
+          <div class="notice notice-info">
+            <strong>Pierwsze uruchomienie</strong>
+            Utwórz długie hasło główne. Nie zapisujemy go i nie możemy go odzyskać.
+          </div>
+          <label>Hasło główne
+            <input id="setup-password" type="password" minlength="16" maxlength="512" autocomplete="new-password" required>
+          </label>
+          <label>Powtórz hasło
+            <input id="setup-confirmation" type="password" minlength="16" maxlength="512" autocomplete="new-password" required>
+          </label>
+          <p class="field-help">Najlepiej użyj 5–6 losowych słów. Nie używaj tego hasła nigdzie indziej.</p>
+          <button class="button button-primary" type="submit">Utwórz zaszyfrowany sejf</button>
+        </form>
+
+        <form id="login-form" class="auth-form hidden">
+          <label>Hasło główne
+            <input id="login-password" type="password" maxlength="512" autocomplete="current-password" required autofocus>
+          </label>
+          <button class="button button-primary" type="submit">Odblokuj lokalnie</button>
+          <p class="field-help">Klucz odszyfrowujący istnieje tylko w pamięci podczas aktywnej sesji.</p>
+        </form>
+        <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <div id="app-shell" class="app-shell hidden">
+      <header class="topbar">
+        <a href="#overview" class="brand">
+          <span class="brand-lock small" aria-hidden="true">CT</span>
+          <span><strong>CyberTarcza</strong><small>LOCAL VAULT</small></span>
+        </a>
+        <div class="topbar-actions">
+          <span class="local-badge"><i></i> Tylko lokalnie</span>
+          <button id="install-app" class="button button-ghost hidden" type="button">Zainstaluj aplikację</button>
+          <button id="logout" class="button button-ghost" type="button">Zablokuj</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <nav class="sidebar" aria-label="Główna nawigacja">
+          <button class="nav-item active" data-section="overview" type="button"><span>01</span> Przegląd</button>
+          <button class="nav-item" data-section="layers" type="button"><span>02</span> Warstwy ochrony</button>
+          <button class="nav-item" data-section="exposure" type="button"><span>03</span> Wycieki danych</button>
+          <button class="nav-item" data-section="devices" type="button"><span>04</span> Urządzenia</button>
+          <button class="nav-item" data-section="system" type="button"><span>05</span> Windows i Android</button>
+          <button class="nav-item" data-section="backup" type="button"><span>06</span> Kopia sejfu</button>
+          <div class="sidebar-foot">
+            <p>Szyfrowanie sejfu</p>
+            <strong>AES-256-GCM</strong>
+            <small>scrypt · 131 072 iteracji</small>
+          </div>
+        </nav>
+
+        <div class="content">
+          <div id="global-message" class="global-message hidden" role="status" aria-live="polite"></div>
+
+          <section id="section-overview" class="view active" aria-labelledby="overview-title">
+            <div class="page-heading">
+              <div><p class="eyebrow">Stan ochrony</p><h2 id="overview-title">Twój prywatny pulpit bezpieczeństwa</h2></div>
+              <p class="page-copy">Wynik pokazuje konfigurację, nie obietnicę pełnej odporności. Najpierw zabezpiecz pocztę i kopie danych.</p>
+            </div>
+            <div class="overview-grid">
+              <article class="score-card panel">
+                <div class="score-ring" id="score-ring" style="--score:0">
+                  <div><strong id="score-value">0</strong><span>/ 100</span></div>
+                </div>
+                <div><p class="metric-label">Poziom wdrożenia</p><h3 id="score-label">Rozpocznij konfigurację</h3><p id="score-copy">Zaznacz zabezpieczenia, które już sprawdziłeś.</p></div>
+              </article>
+              <article class="priority-card panel">
+                <p class="metric-label">Najważniejsze teraz</p>
+                <h3 id="priority-title">Poczta i klucze dostępu</h3>
+                <p id="priority-copy">Włącz passkey lub klucz sprzętowy na głównym koncie e-mail.</p>
+                <button class="text-button" data-jump="layers" type="button">Przejdź do listy →</button>
+              </article>
+            </div>
+            <div id="area-cards" class="area-grid"></div>
+            <div class="truth-panel panel">
+              <span class="truth-icon">!</span>
+              <div><h3>Czego aplikacja nie robi</h3><p>Nie zastępuje Microsoft Defendera, Play Protect ani zapory routera. Bezpiecznie sprawdza, przypomina i przechowuje wyniki — bez montowania dysku systemowego i bez dostępu do haseł.</p></div>
+            </div>
+          </section>
+
+          <section id="section-layers" class="view" aria-labelledby="layers-title">
+            <div class="page-heading"><div><p class="eyebrow">14 kontroli</p><h2 id="layers-title">Warstwy ochrony</h2></div><p class="page-copy">Zaznacz punkt dopiero po jego wykonaniu i sprawdzeniu.</p></div>
+            <div id="control-groups" class="control-groups"></div>
+          </section>
+
+          <section id="section-exposure" class="view" aria-labelledby="exposure-title">
+            <div class="page-heading"><div><p class="eyebrow">Monitoring naruszeń</p><h2 id="exposure-title">Wycieki danych i haseł</h2></div><p class="page-copy">Pełne hasło nie jest zapisywane. Kontrola hasła wysyła tylko 5 znaków jego skrótu metodą k-anonimowości.</p></div>
+            <div class="split-grid">
+              <article class="panel form-panel">
+                <p class="panel-kicker">Adresy do monitorowania</p>
+                <h3>Dodaj e-mail</h3>
+                <form id="identity-form" class="stack-form">
+                  <label>E-mail<input id="identity-email" type="email" maxlength="254" autocomplete="email" required></label>
+                  <label>Etykieta<input id="identity-label" type="text" maxlength="60" placeholder="np. główna poczta"></label>
+                  <button class="button button-primary" type="submit">Dodaj zaszyfrowany adres</button>
+                </form>
+                <div id="identity-list" class="item-list"></div>
+              </article>
+              <article class="panel form-panel">
+                <p class="panel-kicker">Pwned Passwords</p>
+                <h3>Sprawdź hasło bez zapisywania</h3>
+                <form id="password-check-form" class="stack-form">
+                  <label>Hasło do jednorazowego sprawdzenia<input id="password-check" type="password" maxlength="512" autocomplete="off" required></label>
+                  <button class="button button-secondary" type="submit">Sprawdź prywatnie</button>
+                </form>
+                <div id="password-result" class="result-box muted">Wynik pojawi się tutaj. Po sprawdzeniu pole zostanie wyczyszczone.</div>
+              </article>
+            </div>
+            <article class="panel scan-panel"><p class="panel-kicker">Ostatnie kontrole</p><div id="scan-list" class="scan-list"></div></article>
+          </section>
+
+          <section id="section-devices" class="view" aria-labelledby="devices-title">
+            <div class="page-heading"><div><p class="eyebrow">Inwentarz</p><h2 id="devices-title">Chronione urządzenia</h2></div><p class="page-copy">Nie wpisuj numerów seryjnych, IMEI ani haseł. Wystarczy nazwa i krótka notatka.</p></div>
+            <div id="asset-list" class="asset-grid"></div>
+            <article class="panel form-panel compact">
+              <h3>Dodaj urządzenie</h3>
+              <form id="asset-form" class="inline-form">
+                <label>Typ<select id="asset-type"><option value="computer">Komputer</option><option value="phone">Telefon</option><option value="router">Router</option><option value="iot">IoT</option><option value="other">Inne</option></select></label>
+                <label>Nazwa<input id="asset-name" type="text" maxlength="80" required></label>
+                <label>Notatka<input id="asset-notes" type="text" maxlength="240"></label>
+                <button class="button button-primary" type="submit">Dodaj</button>
+              </form>
+            </article>
+          </section>
+
+          <section id="section-system" class="view" aria-labelledby="system-title">
+            <div class="page-heading"><div><p class="eyebrow">Kompatybilność</p><h2 id="system-title">Windows 10/11 i Android 10+</h2></div><p class="page-copy">Skaner zbiera wyłącznie stan zabezpieczeń. Zmiany wymagające administratora pozostają osobnym, świadomym krokiem.</p></div>
+            <div class="system-grid">
+              <article class="system-card panel"><span class="system-mark windows">W</span><div><h3>Windows 11 — wszystkie edycje</h3><p>Defender, zapora, Secure Boot, TPM, szyfrowanie urządzenia/BitLocker, SMB1, RDP i stan aktualizacji.</p><a class="button button-secondary" href="/windows-audit.ps1" download>Pobierz bezpieczny audyt</a></div></article>
+              <article class="system-card panel warning"><span class="system-mark windows">10</span><div><h3>Windows 10</h3><p>Obsługiwany przez audyt, ale system bez ESU nie otrzymuje zwykłych poprawek bezpieczeństwa. Aplikacja nie naprawi braku aktualizacji systemowych.</p><a href="https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/windows-10-support-has-ended-on-october-14-2025" target="_blank" rel="noopener noreferrer">Informacja Microsoftu →</a></div></article>
+              <article class="system-card panel"><span class="system-mark android">A</span><div><h3>Android 10 i nowszy</h3><p>Play Protect, aktualizacje, Find Hub, blokada ekranu, instalacje zewnętrzne i instrukcje Advanced Protection, gdy system ją obsługuje.</p><button id="pwa-install-secondary" class="button button-secondary" type="button">Zainstaluj PWA</button></div></article>
+              <article class="system-card panel"><span class="system-mark router">R</span><div><h3>Router Vectra</h3><p>Lista ustawień WPA3/WPA2-AES, WPS, UPnP, dostępu zdalnego, DNS i sieci gościnnej. Dokładne nazwy opcji zależą od modelu routera.</p><button class="text-button" data-jump="layers" type="button">Otwórz kontrole routera →</button></div></article>
+            </div>
+          </section>
+
+          <section id="section-backup" class="view" aria-labelledby="backup-title">
+            <div class="page-heading"><div><p class="eyebrow">Odzyskiwanie</p><h2 id="backup-title">Zaszyfrowana kopia sejfu</h2></div><p class="page-copy">Plik pozostaje zaszyfrowany AES-256-GCM. Bez hasła głównego jego zawartość jest nieczytelna.</p></div>
+            <article class="backup-card panel">
+              <div class="backup-art" aria-hidden="true"><span></span><span></span><span></span></div>
+              <div><h3>Pobierz kopię teraz</h3><p>Przechowuj jedną kopię na zaszyfrowanym nośniku odłączonym od komputera. Nie trzymaj jej razem z zapisanym hasłem głównym.</p><a class="button button-primary" href="/api/export" download>Pobierz plik .vault</a></div>
+            </article>
+            <div class="rule-grid">
+              <article class="mini-panel"><strong>3</strong><span>kopie danych</span></article>
+              <article class="mini-panel"><strong>2</strong><span>różne nośniki</span></article>
+              <article class="mini-panel"><strong>1</strong><span>kopia offline</span></article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

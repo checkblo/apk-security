@@ -1,0 +1,41 @@
+name: Zgłoszenie błędu
+description: Zgłoś błąd niezawierający danych poufnych.
+title: "[Błąd] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nie wklejaj sejfu, haseł, kluczy API, kodów odzyskiwania ani danych osobowych. Luki bezpieczeństwa zgłaszaj prywatnie zgodnie z SECURITY.md.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Komponent
+      options:
+        - Docker / panel lokalny
+        - Windows
+        - Android
+        - Dokumentacja
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Opis
+      description: Co się stało i czego oczekiwałeś?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Kroki odtworzenia
+      description: Użyj wyłącznie danych testowych.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Środowisko
+      description: Wersja systemu, Dockera, przeglądarki lub Androida.
+    validations:
+      required: true

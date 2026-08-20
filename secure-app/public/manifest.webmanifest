@@ -1,0 +1,14 @@
+{
+  "name": "CyberTarcza Local",
+  "short_name": "CyberTarcza",
+  "description": "Szyfrowane centrum warstwowej ochrony kont, Windowsa, Androida i sieci domowej.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#071713",
+  "theme_color": "#071713",
+  "lang": "pl",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
