@@ -9,6 +9,9 @@ Bezpieczenstwo:
 - kopia danych aplikacji i transfer miedzy urzadzeniami sa zablokowane;
 - polaczenia HTTP bez TLS sa zablokowane;
 - aplikacja nie prosi o uprawnienia administratora, dostepnosc, SMS, kontakty ani pliki;
-- otwarcie aplikacji wymaga potwierdzenia blokady ekranu, jesli telefon ja posiada.
+- otwarcie aplikacji zawsze wymaga potwierdzenia skonfigurowanej blokady ekranu;
+- bez skonfigurowanej blokady ekranu zaszyfrowana checklista nie zostanie otwarta;
+- po przejsciu do tla aplikacja blokuje sie ponownie, a `FLAG_SECURE` blokuje zrzuty ekranu i podglad w ostatnich aplikacjach;
+- checklista obejmuje rowniez segmentacje 11 urzadzen IoT, ich cykl aktualizacji oraz procesy incydentow i podatnosci GDPR/NIS2/CRA.
 
 Do zbudowania podpisanego wydania wymagany jest Android Studio/Android SDK 35, JDK 17 i prywatny magazyn klucza. Dane podpisu przekazuje sie zmiennymi `CT_KEYSTORE_FILE`, `CT_KEYSTORE_PASSWORD`, `CT_KEY_ALIAS`, `CT_KEY_PASSWORD`. Klucza podpisujacego nie wolno dodawac do repozytorium.
