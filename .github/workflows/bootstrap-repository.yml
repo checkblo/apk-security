@@ -31,12 +31,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unzip -q -o CyberTarcza-Local-GitHub.zip -d .
+          restore_dir="$(mktemp -d)"
+          unzip -q CyberTarcza-Local-GitHub.zip -d "$restore_dir"
+          rsync -a --exclude='.github/workflows/' "$restore_dir/" ./
           mkdir -p release
           cp CyberTarcza-Local-GitHub.zip release/CyberTarcza-Local-GitHub.zip
           cp CyberTarcza-Local-GitHub.zip release/CyberTarcza-Local-1.0.0.zip
           rm CyberTarcza-Local-GitHub.zip
-          rm .github/workflows/bootstrap-repository.yml
 
       - name: Publish complete repository tree
         shell: bash
